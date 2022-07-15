@@ -1,7 +1,7 @@
 {% extends 'layout.html' %}
 
 {% block body %}
-    <h1>Measurement</h1>
+    <h1>Measurements for transducer: {{transducer_name}}</h1>
     <ul class="list-group">
         {% for a  in names %}
            <li class="list-group-item"><a href = "/measurement/{{a.id}}">{{a.name}}</a></li>

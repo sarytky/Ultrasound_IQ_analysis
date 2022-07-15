@@ -52,13 +52,25 @@ def on_created(event):
         print(error)
         print("Transducer analysed previously")
         flag_analysed_before = True
-        path_vo_data = path + '/1'  # vastaanottomittaus on eka.
 
+        # Find the first measurement
+        path_vo_data = os.listdir(path)
+        path_vo_data.sort()
+        path_vo_data = os.path.join(path, path_vo_data[0])
+
+    # Nimeäminen tutkimuspäivämäärän mukaan
     path_old = path
     uniq = 1
-    while os.path.exists(path):  # etsii ensimmäisen seuraavaksi vapaan luvun 1 lähtien
-        path = path_old + '/%d' % uniq
+    study_date = res['date']
+    path_date = path_old + f'/{study_date}'
+
+    while os.path.exists(path):  # Etsii 1. vapaan luvun samalle tutkimuspäivälle
+        path = path_date + f'_{uniq}'
         uniq += 1
+
+    #while os.path.exists(path):  # etsii ensimmäisen seuraavaksi vapaan luvun 1 lähtien
+    #    path = path_old + '/%d' % uniq
+    #    uniq += 1
 
     # --- Vertaa ensimmäiseen mittaukseen ---
     if flag_analysed_before:
@@ -85,7 +97,7 @@ def on_created(event):
             line_prepender1(args.log_filename, text_list)
         else:
             text = text_list + ' Analysoitu laite: ' + str(res['name']) + ' anturi: ' + str(
-                res['transducer_name']), + '\n'
+                res['transducer_name']) + '\n'
             text_list = [text]
             # --- eroavaisuus notifikaatio ---
             for k in alert_flag.keys():
@@ -147,8 +159,12 @@ if __name__ == "__main__":
                         default=os.path.join(os.getcwd(), 'Settings.yaml'))
     parser.add_argument('--log_filename', type=str, default='log_file.txt')
     parser.add_argument('--data_path', type=str)
-    parser.add_argument('--check_dicom_extension', type=bool, defaul=False, help='Require .dcm-extension')
-    parser.add_argument('--check_test_id', type=bool, defaul=False, help='Require specific patient IDs for US images')
+    parser.add_argument('--save_path', type=str)
+    parser.add_argument('--path_LUT_table', type=str)
+    parser.add_argument('--id2cmp', type=list)
+    parser.add_argument('--TH', type=float)
+    parser.add_argument('--check_dicom_extension', type=bool, default=False, help='Require .dcm-extension')
+    parser.add_argument('--check_test_id', type=bool, default=False, help='Require specific patient IDs for US images')
 
     args = parser.parse_args()
 
@@ -162,7 +178,7 @@ if __name__ == "__main__":
         args.TH = dct['threshold_val']
 
     print('Analysis software started')
-    print('Close using ctrl+c by closing the window')
+    print('Close using ctrl+c or by closing the window')
 
     # %% --- Watch dog ---
     # Define Watchdog event handler
@@ -183,7 +199,6 @@ if __name__ == "__main__":
     # Update settings every hour
     try:
         while True:
-            time.sleep(3600)
             with open(args.settings_path) as a_yaml_file:
                 dct = yaml.load(a_yaml_file, Loader=yaml.FullLoader)
                 args.data_path = dct['data_path']

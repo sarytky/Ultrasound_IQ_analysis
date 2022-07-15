@@ -1,7 +1,8 @@
 {% extends 'layout.html' %}
 
 {% block body %}
-    <h1>Transducer</h1>
+    <h1>Transducers for device:</h1>
+    <h1>{{device_name}}</h1>
     <ul class="list-group">
         {% for a  in names %}
            <li class="list-group-item"><a href = "/transducer/{{a.id}}">{{a.name}}</a></li>

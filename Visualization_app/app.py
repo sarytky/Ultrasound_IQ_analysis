@@ -34,7 +34,7 @@ def device(id):
     transducer_names = get_filenames(join(path_data, name))
     transducer_names = Convert(transducer_names)
 
-    return render_template('device.html', names=transducer_names)
+    return render_template('device.html', names=transducer_names, device_name=name)
 
 
 @app.route('/transducer/<string:id>/')
@@ -50,7 +50,7 @@ def transducer(id):
     measurement_names = get_filenames(join(path2device, name))
     measurement_names = Convert(measurement_names)
 
-    return render_template('transducer.html', names=measurement_names)
+    return render_template('transducer.html', names=measurement_names, transducer_name=name)
 
 
 @app.route('/measurement/<string:id>/')
@@ -119,6 +119,11 @@ def log():
 if __name__ == '__main__':
     app.secret_key = 'super secret key'  # this is needed to start the program locally
 
-    # app.run(debug=True)  # Run locally
+    run_server = False
 
-    serve(app, host='0.0.0.0', port=8080)  # Start online server
+    if run_server:
+        serve(app, host='0.0.0.0', port=8080)  # Start online server
+    else:
+        app.run(debug=True)  # Run locally
+
+

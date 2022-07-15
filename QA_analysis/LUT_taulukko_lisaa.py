@@ -21,10 +21,10 @@ def dir_path(string):
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                  description='Lisataan LUT taulukkoon antureita')
 parser.add_argument('--data_path', type=dir_path,
-                    default=r'\\eshvasov3\UA-analyysi\Ultrasound_IQ_analysis-main\QA_analysis\data\DICOM',
+                    default=r'C:\Users\Public\Documents\Ultrasound_IQ_analysis\QA_analysis\Extra_data\Testi\140722-ilmakuvat',
                     help='hakemisto joka sisaltaa listattavat dicom tiedostot')
 parser.add_argument('--excel_writer_path', type=str,
-                    default=r'\\eshvasov3\UA-analyysi\Ultrasound_IQ_analysis-main\QA_analysis\LUT.xls',
+                    default=r'C:\Users\Public\Documents\Ultrasound_IQ_analysis\QA_analysis\LUT.xls',
                     help='Hakemistopolku excel tiedostoon johon tiedot lisataan automaattisesti')
 
 args = parser.parse_args()
@@ -54,4 +54,4 @@ for filename in filenames:  # Tama looppi kay dcm tiedostot lapi ja lisaa metati
 
     frames = [df, df1]
     df_total = pd.concat(frames)
-    df_total.to_excel(excel_writer)
+    df_total.to_excel(excel_writer, engine='openpyxl')

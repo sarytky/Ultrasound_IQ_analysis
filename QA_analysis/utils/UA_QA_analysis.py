@@ -218,7 +218,7 @@ def imopen_take_largest(BW, dilate_f=True,  kernel=np.ones((5, 5), np.uint8), it
     return BW_new 
 
 
-def transform_convex_image2linear(im):
+def transform_convex_image2linear(im, threshold=1.5):
     """
     This function transforms the convex transducer image to linear using
     polar transform.
@@ -232,16 +232,16 @@ def transform_convex_image2linear(im):
     polar_image : Polar image
 
     """
-    im = im[0:int(im.shape[0]/2), :]  # crop bottom half (noise) away
-    #import pdb; pdb.set_trace()
+    im = im[0:int(im.shape[0] / 2), 30:-30]  # crop bottom half (noise) away
+    # import pdb; pdb.set_trace()
     loop = True
     c = 0
     while loop:  # see if else in loop
-        BW = im > 1.5*np.mean(im[0:int(im.shape[0]/2), :])  # Threshold image
-        kernel = np.ones((5, 5), np.uint8)
-        iters = 3
+        BW = threshold * im > np.mean(im[0:int(im.shape[0]/2), :])  # Threshold image
+        kernel = np.ones((3, 3), np.uint8)
+        iters = 2
         dilate_f = False  # no dilatation to find the offset value
-        BW_new = imopen_take_largest(BW, dilate_f)  # This also removes text attached to the border
+        BW_new = imopen_take_largest(BW, dilate_f, kernel, iters)  # This also removes text attached to the border
         BW = BW_new  
         
         # take largest component
@@ -271,16 +271,17 @@ def transform_convex_image2linear(im):
         else:
             
             loop = False  # continue
-        
-    
+
     # Next compute radius for finding offset to polar transform:
     # Find transducer edges:
     vals = np.argwhere(BW == 1)
    
-    x = vals[:,1]
-    y = vals[:,0]
-    y_max = np.max(y); x_max = np.max(x)     
-    y_min = np.min(y); x_min = np.min(x) 
+    x = vals[:, 1]
+    y = vals[:, 0]
+    y_max = np.max(y)
+    x_max = np.max(x)
+    y_min = np.min(y)
+    x_min = np.min(x)
     
     y_min += 1  # increment by one to ensure that two peaks are detected
     inds = np.argwhere(y == y_min)  # find indices of the edge
@@ -333,7 +334,7 @@ def transform_convex_image2linear(im):
     offset = int(r - h) 
 
     # Find mask again with dilatation to preserve image regions
-    BW = im > 1.5*np.mean(im[0:int(im.shape[0]/2), :])  # Threshold image
+    BW = im > threshold * np.mean(im[0:int(im.shape[0]/2), :])  # Threshold image
     kernel = np.ones((3, 3), np.uint8)
     iters = 1
     BW = imopen_take_largest(BW, True, kernel, iters)
@@ -359,12 +360,10 @@ def transform_convex_image2linear(im):
     # plt.imshow(BW)
     # #plt.imshow(BW_1[x_min-10:x_max+10,y_min-10:y_max+10])
     # plt.show()
-        
     
-    x = np.round(im_crop.shape[0] * 1)
+    x = np.round(im_crop.shape[0])
     im_crop2 = im_crop[0:x.astype(int), :]*BW
-    
-    
+
     temp = np.zeros((im_crop2.shape[0]+offset, im_crop2.shape[1]))
     temp[offset:, :] = im_crop2
 
@@ -383,17 +382,18 @@ def transform_convex_image2linear(im):
     img = temp_disk.astype(np.float32)
    
     # --- the following holds the square root of the sum of squares of the image dimensions ---
-    # --- this is done so that the entire width/height of the original image is used to express the complete circular range of the resulting polar image ---
+    # --- this is done so that the entire width/height of the original image is used
+    # --- to express the complete circular range of the resulting polar image ---
     value = np.sqrt(((img.shape[0]/2.0)**2.0)+((img.shape[1]/2.0)**2.0))
    
-    polar_image = cv2.linearPolar(img,(img.shape[0]/2, img.shape[1]/2), value, cv2.WARP_FILL_OUTLIERS)
+    polar_image = cv2.linearPolar(img, (img.shape[0]/2, img.shape[1]/2), value, cv2.WARP_FILL_OUTLIERS)
     polar_image = np.transpose(polar_image)
     polar_image = np.fliplr(polar_image)
 
     return polar_image
     
 
-def transform_convex_image2linear_old(im):
+def transform_convex_image2linear_old(im, threshold=1.5):
     """
     This function transforms the convex transducer image to linear using
     polar transform.
@@ -408,17 +408,17 @@ def transform_convex_image2linear_old(im):
 
     """
     # ----Pre-crop ---
-    im = im[0:int(im.shape[0]/2), :]  # crop bottom half (noise) away
+    im = im[0:int(im.shape[0]/2), 30:-30]  # crop bottom half (noise) away
     loop = True
     c = 0
     while loop:  # see if else in loop
     
-        BW = im  > 1.5*np.mean(im[0:int(im.shape[0]/2), :])  # Threshold image
+        BW = im > threshold * np.mean(im[0:int(im.shape[0]/2), :])  # Threshold image
         
-        kernel = np.ones((5, 5), np.uint8)
-        iters = 4
+        kernel = np.ones((3, 3), np.uint8)
+        iters = 2
         dilate_f = True  # no dilatation to find the offset value
-        BW_new = imopen_take_largest(BW, dilate_f)  # This also removes text attached to the border
+        BW_new = imopen_take_largest(BW, dilate_f, kernel, iters)  # This also removes text attached to the border
         BW = BW_new  
             
         label_im, nb_labels = ndimage.label(BW)
@@ -429,8 +429,8 @@ def transform_convex_image2linear_old(im):
     
         vals = np.argwhere(BW == 1)
            
-        x = vals[:,1]
-        y = vals[:,0]
+        x = vals[:, 1]
+        y = vals[:, 0]
         
         y_border = 5
         
@@ -442,20 +442,18 @@ def transform_convex_image2linear_old(im):
             # plt.imshow(im2)
             # plt.show()
             loop = True  # run again
-            c +=1
+            c += 1
         elif c > 2:
             break
         else:
             
             loop = False  # continue
-            
-
 
     # corner locations:
-    vals = np.argwhere(BW==1)
+    vals = np.argwhere(BW == 1)
    
-    x = vals[:,0]
-    y = vals[:,1]    
+    x = vals[:, 0]
+    y = vals[:, 1]
 
     y_min = np.min(y)
     y_max = np.max(y)
@@ -463,11 +461,11 @@ def transform_convex_image2linear_old(im):
     x_max = np.max(x)
    
     # Crop image to content:
-    im_crop = im[x_min:x_max,y_min:y_max]
+    im_crop = im[x_min:x_max, y_min:y_max]
    
     # tight crop to edge fits:
     x = np.round(im_crop.shape[0]*0.5)
-    BW = im_crop[ 0:x.astype(int) , :]  > 1.5*np.mean(im[0:int(im.shape[0]/2),:]) #Threshold image
+    BW = im_crop[0:x.astype(int), :] > threshold * np.mean(im[0:int(im.shape[0]/2), :])  # Threshold image
     
     label_im, nb_labels = ndimage.label(BW)
     sizes = ndimage.sum(BW, label_im, range(nb_labels + 1))
@@ -475,40 +473,41 @@ def transform_convex_image2linear_old(im):
     BW = label_im == loc
 
     # Find edge pixels using for loop:
-    left_vals = np.zeros((40, 2))
-    right_vals = np.zeros((40, 2))    
-    count=0
-    for  row in range(10, 50, 1): #range(10, 100, 1): #this affects how many  edge points are taken 
-        profile = BW[row,:]
+    rows = min(BW.shape[0]-10, 40)
+    left_vals = np.zeros((rows, 2))
+    right_vals = np.zeros((rows, 2))
+    count = 0
+    for row in range(10, rows + 10, 1):  # range(10, 100, 1): #this affects how many  edge points are taken
+        profile = BW[row, :]
         loc_l = np.argmax(profile)
         loc_r = np.argmax(np.flipud(profile))
-        loc_r  = BW.shape[1]-loc_r
+        loc_r = BW.shape[1]-loc_r
        
-        left_vals[count,:] = [row, loc_l]
-        right_vals[count,:] = [row, loc_r]
-        count+=1
+        left_vals[count, :] = [row, loc_l]
+        right_vals[count, :] = [row, loc_r]
+        count += 1
    
-    ## sanity check:
+    # sanity check:
   #  plt.imshow(BW)
   #  plt.plot(left_vals[:,1], left_vals[:, 0])
   #  plt.plot(right_vals[:,1], right_vals[:, 0])
   #  plt.show()
    
-    #Line fits:
-    x_r = right_vals[:,1]
-    y_r = right_vals[:,0]    
+    # Line fits:
+    x_r = right_vals[:, 1]
+    y_r = right_vals[:, 0]
     m_r, b_r = np.polyfit(x_r, y_r, 1)
-    #m = slope, b = intercept.
+    # m = slope, b = intercept.
    
-    x_l = left_vals[:,1]
-    y_l = left_vals[:,0]    
+    x_l = left_vals[:, 1]
+    y_l = left_vals[:, 0]
     m_l, b_l = np.polyfit(x_l, y_l, 1)
    
     # intersection:
     x_int = (b_l-b_r)/(m_r-m_l)
     y_int = m_r*x_int+b_r
        
-    ##sanity check 2
+    # sanity check 2
  #   plt. plot(x_r, y_r, 'ko')
  #   plt. plot(x_r, m_r*x_r + b_r)
     #
@@ -520,11 +519,10 @@ def transform_convex_image2linear_old(im):
    
     # take the whole image:
     x = np.round(im_crop.shape[0]*1)
-   
     
-    BW = im_crop[ 0:x.astype(int) , :]  > 1.5*np.mean(im[0:int(im.shape[0]/2),:]) #Threshold image
+    BW = im_crop[0:x.astype(int), :] > 1.5*np.mean(im[0:int(im.shape[0]/2), :])  # Threshold image
     
-    kernel = np.ones((3,3), np.uint8)
+    kernel = np.ones((3, 3), np.uint8)
     iters = 3
     BW = imopen_take_largest(BW, True, kernel, iters)
     
@@ -533,12 +531,12 @@ def transform_convex_image2linear_old(im):
     loc = np.argmax(sizes)
     BW = label_im == loc
    
-    im_crop2 = im_crop[ 0:x.astype(int) , :]*BW
+    im_crop2 = im_crop[0:x.astype(int), :]*BW
    
     offset = np.round(np.abs(y_int))
     offset = offset.astype(int)
     temp = np.zeros((im_crop2.shape[0]+offset, im_crop2.shape[1]))    
-    temp[offset:,:] = im_crop2
+    temp[offset:, :] = im_crop2
 
     # enlarge to cover whole area:
     temp_disk = np.zeros((2*temp.shape[0], 2*temp.shape[0]))
@@ -550,24 +548,24 @@ def transform_convex_image2linear_old(im):
     end_loc3 = offset3+temp.shape[1]
     end_loc3 = end_loc3.astype(int)
    
-    temp_disk[ offset2: ,  offset3:end_loc3 ] = temp
+    temp_disk[offset2:,  offset3:end_loc3] = temp
     
     #    import pdb; pdb.set_trace()
     # --- ensure image is of the type float ---
     img = temp_disk.astype(np.float32)
    
     # --- the following holds the square root of the sum of squares of the image dimensions ---
-    # --- this is done so that the entire width/height of the original image is used to express the complete circular range of the resulting polar image ---
+    #  --- this is done so that the entire width/height of the original image is used to express the complete circular range of the resulting polar image ---
     value = np.sqrt(((img.shape[0]/2.0)**2.0)+((img.shape[1]/2.0)**2.0))
    
-    polar_image = cv2.linearPolar(img,(img.shape[0]/2, img.shape[1]/2), value, cv2.WARP_FILL_OUTLIERS)
+    polar_image = cv2.linearPolar(img, (img.shape[0]/2, img.shape[1]/2), value, cv2.WARP_FILL_OUTLIERS)
     polar_image = np.transpose(polar_image)
     polar_image = np.fliplr(polar_image)
 
     return polar_image
 
 
-def US_air_image_analysis(im_crop, reverb_lines = 4 ):
+def US_air_image_analysis(im_crop, reverb_lines=4):
     """
     Ultrasound air image analysis on cropped image im_crop
 
@@ -598,7 +596,7 @@ def US_air_image_analysis(im_crop, reverb_lines = 4 ):
     # --- Vertical profile ---
     vert_profile = np.median(im_crop, axis = 1)
    
-    background = im_crop[np.round(im_crop.shape[0]/2).astype(int):,:]
+    background = im_crop[np.round(im_crop.shape[0]/2).astype(int):, :]
     background_value = np.median(background.ravel())
    
     # --- S_depth ---
@@ -610,9 +608,9 @@ def US_air_image_analysis(im_crop, reverb_lines = 4 ):
   
     # --- Horizontal profile ---
     # Calculate the reverb lines positions:
-    XX = get_reverb_lines(vert_profile, reverb_lines, smooth_factor = 5)
+    XX = get_reverb_lines(vert_profile, reverb_lines, smooth_factor=5)
        
-    horizon_profile = np.mean(im_crop[0:XX[-1],:], axis = 0)
+    horizon_profile = np.mean(im_crop[0:XX[-1], :], axis=0)
    
     u = horizon_profile
    
@@ -625,7 +623,7 @@ def US_air_image_analysis(im_crop, reverb_lines = 4 ):
     U_cov = 100*(np.std(u)/np.mean(u))
     m3 = (1/len(u))*np.sum((u-np.mean(u))**3)
     m32 = ((1/len(u))*np.sum((u-np.mean(u))**2))**(3/2)
-    U_skew = m3/m32
+    U_skew = m3 / m32
    
     # --- Segments--
     segment = np.array([10, 20, 40, 20, 10])
@@ -650,9 +648,9 @@ def is_convex(image):
     # import pdb; pdb.set_trace()
     im = crop_US_im(image)
     BW = im > 0
-    BW = BW[0:int(0.2*BW.shape[0]),:] #take only 20% of the image size
+    BW = BW[0:int(0.2*BW.shape[0]), :]  # take only 20% of the image size
     ind = np.where(BW == 1)    
-    hist, bin_edges = np.histogram(ind[1], 10, density=True) #analyze historgram of the found indices
+    hist, bin_edges = np.histogram(ind[1], 10, density=True)  # analyze historgram of the found indices
 
     #plt.scatter(np.linspace(0,1,len(hist)),hist), plt.show()
      
@@ -712,45 +710,52 @@ def MAIN_US_analysis(path_data, path_LUT_table):
         else:
             TransducerType = 'LINEAR'
    
-    Physical_Delta_X  = data.SequenceOfUltrasoundRegions[0]['0x0018602c'].value
-    Physical_Delta_Y  = data.SequenceOfUltrasoundRegions[0]['0x0018602e'].value
+    Physical_Delta_X = data.SequenceOfUltrasoundRegions[0]['0x0018602c'].value
+    Physical_Delta_Y = data.SequenceOfUltrasoundRegions[0]['0x0018602e'].value
    
     unit = data.SequenceOfUltrasoundRegions[0]['0x00186024'].value
-    label = data[0x00081010].value
+    institution = str(data[0x00080080].value)
    
+    # try:
+    #    transducer_name = data[0x00186031].value  # read in transducer name
+    # except:
+    # ----- if the name cannot be found --> then search from the look up table (LUT)  for corresponding transducer.
+    df = pd.read_excel(path_LUT_table)
     try:
-        transducer_name = data[0x00186031].value  # read in transducer name
+        df.drop(['Unnamed: 0'], axis=1, inplace=True)
     except:
-        # ----- if the name cannot be found --> then search from the look up table (LUT)  for corresponding transducer. 
-        df = pd.read_excel(path_LUT_table)
-        try:
-            df.drop(['Unnamed: 0'], axis = 1, inplace=True)
-        except:
-            None
-        dct_params = extract_parameters(data)
-        df1 = pd.DataFrame(data = dct_params)
-        transducer_name = get_name_from_df(df, df1)  # if the transducer name is not listed 'no name' is annotated
+        None
+    dct_params = extract_parameters(data)
+    df1 = pd.DataFrame(data=dct_params)
+    transducer_name = get_name_from_df(df, df1)  # if the transducer name is not listed 'no name' is annotated
 
-        # ---------------------------------------------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------------------------------------------
     
     try:        
-        Transducer_Frequency = data.SequenceOfUltrasoundRegions[0]['0x00186030'].value
+        Transducer_Frequency = '_' + data.SequenceOfUltrasoundRegions[0]['0x00186030'].value + 'Hz'
     except:
         Transducer_Frequency = ''  # if the frequency information missing insert empty string
            
 
     try:
-        department = data[0x00081040].value
+        test_patient = data[0x00100010].value
+        test_patient = str(test_patient).replace('^', ' ').strip()
     except:
-        department ='Institutional_department_unknown'
+        test_patient = ''
     try:    
-        model = data[0x00081090].value
+        model = '_' + str(data[0x00081090].value)
     except:
-        model = 'Model_unknown'
+        model = 'Model unknown'
+    try:
+        manufacturer = str(data[0x00080070].value)
+        manufacturer = '_' + manufacturer.replace('_', ' ').split(' ')[0]
+    except:
+        manufacturer = ''
         
-    name = department + '_' + model+ '_' + label
-   
-    transducer_name = transducer_name + '_' +str(Transducer_Frequency)  # the transcuder name should have name and frequency known!
+    name = test_patient + manufacturer + model + '_' + institution
+
+    # the transducer name should have name and frequency known!
+    transducer_name = transducer_name + str(Transducer_Frequency)
     
     try:
         date = data[0x00080020].value
@@ -758,7 +763,7 @@ def MAIN_US_analysis(path_data, path_LUT_table):
         date = '00000000'
 
     if unit == 3:
-        unit ='cm'
+        unit = 'cm'
     else:
         unit = 'not in meters'
     # --- End  Extract metadata ---     
@@ -771,24 +776,23 @@ def MAIN_US_analysis(path_data, path_LUT_table):
     if im.ndim == 3:  # if image is not grayscale  transform to grayscale
         im = rgb2gray(im)   
 
-
-    if TransducerType == 'CURVED LINEAR': #convex
+    if TransducerType == 'CURVED LINEAR':  # convex
         try:
-            im_t =  transform_convex_image2linear(im)  # transforms convex transducer to linear
+            im_t = transform_convex_image2linear(im)  # transforms convex transducer to linear
         except:
             print('Old code used')
-            im_t =  transform_convex_image2linear_old(im)
+            im_t = transform_convex_image2linear_old(im)
             
-        im_crop = crop_US_im(im_t, crop2half = False)
+        im_crop = crop_US_im(im_t, crop2half=False)
         im_crop = im_crop[:, 3:]  # remove manually few pixels from the edge
         reverb_lines = 5  # number of reverberation lines to be detected is set to 5 for all curved linear transducers
        
-    else: #linear
+    else:  # linear
         im_crop = crop_US_im(im, crop2half=True)
         reverb_lines = 4  # number of reverberation lines to be detected is set to 4 for all  linear transducers
        
     # --- Analysis ---
-    vert_profile, horizon_profile, S_depth, U_cov, U_skew, U_low = US_air_image_analysis(im_crop, reverb_lines )
+    vert_profile, horizon_profile, S_depth, U_cov, U_skew, U_low = US_air_image_analysis(im_crop, reverb_lines)
    
     S_depth = S_depth*Physical_Delta_X  # change from pix to unit
    
@@ -812,6 +816,4 @@ if __name__ == "__main__":
     # path_data='.. '
     # path_LUT_table = '.../QA_analysis/LUT.xls'
     # MAIN_US_analysis(path_data, path_LUT_table)
-     print('Analysis done!')
-
-
+    print('Analysis done!')
