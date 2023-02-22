@@ -376,8 +376,11 @@ def transform_convex_image2linear(im, threshold=1.5):
     offset3 = offset3.astype(int)
     end_loc3 = offset3+temp.shape[1]
     end_loc3 = end_loc3.astype(int)
-    temp_disk[offset2:,  offset3:end_loc3] = temp
- 
+    try:
+        temp_disk[offset2:,  offset3:end_loc3] = temp
+    except ValueError:
+        print('Polar transformation did not work correctly. Returning curved image.')
+        return temp
     # --- ensure image is of the type float ---
     img = temp_disk.astype(np.float32)
    
@@ -548,7 +551,11 @@ def transform_convex_image2linear_old(im, threshold=1.5):
     end_loc3 = offset3+temp.shape[1]
     end_loc3 = end_loc3.astype(int)
    
-    temp_disk[offset2:,  offset3:end_loc3] = temp
+    try:
+        temp_disk[offset2:,  offset3:end_loc3] = temp
+    except ValueError:
+        print('Polar transformation did not work correctly. Returning curved image.')
+        return temp
     
     #    import pdb; pdb.set_trace()
     # --- ensure image is of the type float ---

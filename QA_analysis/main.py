@@ -199,6 +199,7 @@ if __name__ == "__main__":
     # Update settings every hour
     try:
         while True:
+            time.sleep(300)
             with open(args.settings_path) as a_yaml_file:
                 dct = yaml.load(a_yaml_file, Loader=yaml.FullLoader)
                 args.data_path = dct['data_path']
